@@ -1,0 +1,43 @@
+services:
+  clamav-api:
+    image: clamav-api:latest
+    container_name: clamav-api
+    restart: unless-stopped
+    depends_on:
+      - clamav
+    environment:
+      CLAMD_HOST: "clamav"
+      CLAMD_PORT: "3310"
+      DATABASE_URI: "postgresql://clamav:DB_PASSWORD@your_POSTGRESS_DB_HOST_ADDRESS/clamav"  #DON'T FORGOT CREATE DATABASE
+      HOSTNAME: YOUR_HOSTNAME
+    healthcheck:
+      test: ["CMD-SHELL", "[ \"$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5000/scan)\" == \"400\" ]"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    ports:
+      - 5000:5000
+      - 9044:9044
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: clamav
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdscan", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - CLAMD_CONF=/etc/clamav/clamd.conf
+#      - TZ=YOUR_TZ
+    volumes:
+      - clamav_data:/var/lib/clamav
+      - ./clamd.conf:/etc/clamav/clamd.conf
+
+volumes:
+  clamav_data:
+    driver: local
